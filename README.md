@@ -82,65 +82,6 @@ cmake --build .
 ./examples/scan
 ```
 
-### Example Output
-
-```
-Device: Apple M4
-Loading kernel: vector_add.cl
-✓ Vector addition successful!
-  Computed 1024 elements
-```
-
-## Usage Examples
-
-### Simple Vector Addition
-
-```cpp
-#include <ocl/ocl.hpp>
-#include <vector>
-
-int main() {
-    try {
-        // Setup
-        auto device = ocl::Device::getDefault();
-        ocl::Context ctx(device);
-        ocl::CommandQueue queue(ctx, device);
-        
-        // Prepare data
-        std::vector<float> a = {1, 2, 3, 4, 5};
-        std::vector<float> b = {10, 20, 30, 40, 50};
-        std::vector<float> c;
-        
-        // Create buffers from vectors (automatic sizing!)
-        ocl::Buffer<float> buf_a(ctx, a);
-        ocl::Buffer<float> buf_b(ctx, b);
-        ocl::Buffer<float> buf_c(ctx, 5);
-        
-        // Load and compile kernel from file
-        ocl::Program prog = ocl::Program::fromFile(ctx, "add.cl");
-        prog.build(device);
-        ocl::Kernel kernel(prog, "vector_add");
-        
-        // Execute
-        kernel.setArg(0, buf_a.get());
-        kernel.setArg(1, buf_b.get());
-        kernel.setArg(2, buf_c.get());
-        kernel.setArg(3, 5);
-        kernel.execute(queue, 5);
-        
-        // Read results
-        buf_c.read(queue, c);
-        
-        // c now contains [11, 22, 33, 44, 55]
-        
-    } catch (const ocl::Error& e) {
-        std::cerr << "Error: " << e.what() << "\n";
-        return 1;
-    }
-    return 0;
-}
-```
-
 ## API Reference
 
 ### Platform
@@ -288,62 +229,6 @@ double elapsed = profiler.getElapsed("kernel_execution");
 profiler.printResults();  // Print all timings
 profiler.reset();         // Clear all timings
 ```
-
-## Included Examples
-
-### 1. vec_add - Vector Addition
-
-Simple element-wise addition demonstrating basic buffer operations.
-
-```bash
-./examples/vec_add
-```
-
-**What it does:**
-- Adds two 1024-element vectors
-- Demonstrates `Buffer<T>` initialization from vectors
-- Shows kernel loading from file
-
-### 2. matmul - Matrix Multiplication
-
-Optimized tiled matrix multiplication (512×512).
-
-```bash
-./examples/matmul
-```
-
-**What it does:**
-- Multiplies 512×512 matrices
-- Uses 16×16 tiling for cache efficiency
-- Demonstrates 2D kernel execution
-
-### 3. reduction - Parallel Sum
-
-Parallel reduction algorithm to sum all elements.
-
-```bash
-./examples/reduction
-```
-
-**What it does:**
-- Sums 1024 elements in parallel
-- Uses work groups of 256 threads
-- Demonstrates local memory usage
-- Fundamental parallel primitive
-
-### 4. scan - Prefix Sum
-
-Exclusive prefix sum (parallel scan algorithm).
-
-```bash
-./examples/scan
-```
-
-**What it does:**
-- Computes prefix sum of 256 elements
-- Work-efficient Blelloch scan algorithm
-- Demonstrates local memory synchronization
-- Fundamental parallel primitive
 
 ## Building
 
@@ -637,31 +522,6 @@ prof.printResults()                   // Print all
 prof.reset()                          // Clear all
 ```
 
-## Algorithms Included
-
-### 1. Vector Addition
-**File:** `vector_add.cl`  
-**Complexity:** O(n)  
-**Use case:** Element-wise operations
-
-### 2. Matrix Multiplication (Tiled)
-**File:** `matmul_tiled.cl`  
-**Complexity:** O(n³)  
-**Optimization:** 16×16 tiling for cache locality  
-**Use case:** Linear algebra, deep learning
-
-### 3. Parallel Reduction
-**File:** `reduction.cl`  
-**Complexity:** O(log n)  
-**Algorithm:** Tree-based reduction with local memory  
-**Use case:** Sum, max, min, count operations
-
-### 4. Prefix Sum (Scan)
-**File:** `scan.cl`  
-**Complexity:** O(n)  
-**Algorithm:** Work-efficient Blelloch scan  
-**Use case:** Stream compaction, radix sort, histograms
-
 ## Requirements
 
 - **CMake:** 3.10 or later
@@ -675,58 +535,3 @@ prof.reset()                          // Clear all
 - ✅ Linux (Ubuntu 20.04+) - NVIDIA/AMD/Intel
 - ⚠️ Windows (should work, not tested)
 
-## Statistics
-
-```
-Total Files:     30
-Total Lines:     ~1,800
-Library Size:    101 KB (static)
-Headers:         12 files
-Sources:         10 files
-Examples:        4 working programs
-Kernels:         4 tested algorithms
-```
-
-## Contributing
-
-This is a professional OpenCL library suitable for:
-- Learning OpenCL programming
-- Prototyping GPU algorithms
-- Production use with extensions
-
-Feel free to:
-- Add more algorithms
-- Extend the API
-- Add image/texture support
-- Add unit tests
-- Improve documentation
-- Submit pull requests
-
-## Troubleshooting
-
-### CMake can't find OpenCL
-- **macOS:** `brew install opencl-headers`
-- **Linux:** `sudo apt install opencl-headers ocl-icd-opencl-dev`
-- **Windows:** Install GPU vendor's SDK
-
-### Linker errors
-- Ensure GPU drivers are installed
-- Check OpenCL runtime is available
-- Linux: verify `/usr/lib/libOpenCL.so` exists
-
-### Runtime errors
-- Verify GPU supports OpenCL (`clinfo` command)
-- Check work group sizes don't exceed device limits
-- Enable error checking in kernel code
-
-### Build warnings
-- The `deprecated clCreateCommandQueue` warning is expected on macOS (suppressed)
-- The `//opt/homebrew/opt/llvm/lib` search path warning is harmless
-
-## License
-
-MIT License - Free for educational and commercial use.
-
-## Author
-
-Modern C++ OpenCL wrapper library demonstrating professional software architecture and parallel computing algorithms.
