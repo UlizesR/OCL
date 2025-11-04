@@ -1,20 +1,24 @@
 # Examples CMakeLists.txt
 
-# Vector addition example
+# Core algorithm examples
 add_executable(vec_add vec_add.cpp)
 target_link_libraries(vec_add PRIVATE OCL::ocl)
 
-# Matrix multiplication example  
 add_executable(matmul matmul.cpp)
 target_link_libraries(matmul PRIVATE OCL::ocl)
 
-# Reduction example
 add_executable(reduction reduction.cpp)
 target_link_libraries(reduction PRIVATE OCL::ocl)
 
-# Scan (prefix sum) example
 add_executable(scan scan.cpp)
 target_link_libraries(scan PRIVATE OCL::ocl)
+
+# Utilities
+add_executable(benchmark benchmark.cpp)
+target_link_libraries(benchmark PRIVATE OCL::ocl)
+
+add_executable(comprehensive_test comprehensive_test.cpp)
+target_link_libraries(comprehensive_test PRIVATE OCL::ocl)
 
 # Copy kernel files to build directory
 configure_file(
@@ -42,7 +46,11 @@ configure_file(
 )
 
 message(STATUS "Building examples:")
-message(STATUS "  - vec_add (vector addition)")
-message(STATUS "  - matmul (matrix multiplication)")
-message(STATUS "  - reduction (parallel sum)")
-message(STATUS "  - scan (prefix sum)")
+message(STATUS "  [Algorithms]")
+message(STATUS "    • vec_add - Vector addition")
+message(STATUS "    • matmul - Tiled matrix multiplication")
+message(STATUS "    • reduction - Parallel sum")
+message(STATUS "    • scan - Prefix sum")
+message(STATUS "  [Utilities]")
+message(STATUS "    • benchmark - Performance benchmarks")
+message(STATUS "    • comprehensive_test - Full feature test suite")

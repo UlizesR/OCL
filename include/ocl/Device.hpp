@@ -35,6 +35,11 @@ public:
     cl_uint getMaxComputeUnits() const;
     cl_uint getMaxWorkGroupSize() const;
     
+    // Device type predicates
+    bool isGPU() const;
+    bool isCPU() const;
+    bool isAccelerator() const;
+    
     // Get underlying device ID
     cl_device_id id() const { return id_; }
     

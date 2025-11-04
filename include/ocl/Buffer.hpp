@@ -25,8 +25,7 @@ public:
     
     // Create buffer and initialize from std::vector
     // Usage: Buffer<float> buf(context, myVector);
-    Buffer(const Context& context, const std::vector<T>& data, 
-           cl_mem_flags flags = CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR);
+    Buffer(const Context& context, const std::vector<T>& data, cl_mem_flags flags = CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR);
     
     // Destructor
     ~Buffer() {
@@ -40,10 +39,7 @@ public:
     Buffer& operator=(const Buffer&) = delete;
     
     // Enable moving
-    Buffer(Buffer&& other) noexcept 
-        : buffer_(other.buffer_)
-        , size_(other.size_)
-        , capacity_(other.capacity_) {
+    Buffer(Buffer&& other) noexcept : buffer_(other.buffer_), size_(other.size_), capacity_(other.capacity_) {
         other.buffer_ = nullptr;
         other.size_ = 0;
         other.capacity_ = 0;
@@ -68,6 +64,9 @@ public:
     // Usage: buf.write(myVector);
     void write(const CommandQueue& queue, const std::vector<T>& data, bool blocking = true);
     
+    // Write with event (async) - note: include Event.hpp before using
+    void writeAsync(const CommandQueue& queue, const std::vector<T>& data, cl_event& event);
+    
     // Write partial data to buffer
     // Usage: buf.write(myVector, offset);
     void write(const CommandQueue& queue, const std::vector<T>& data, size_t offset, bool blocking = true);
@@ -79,11 +78,29 @@ public:
     // Usage: buf.read(myVector);
     void read(const CommandQueue& queue, std::vector<T>& data, bool blocking = true);
     
+    // Read with event (async) - note: include Event.hpp before using
+    void readAsync(const CommandQueue& queue, std::vector<T>& data, cl_event& event);
+    
     // Read partial buffer
     void read(const CommandQueue& queue, std::vector<T>& data, size_t count, size_t offset = 0, bool blocking = true);
     
     // Read into raw pointer
     void read(const CommandQueue& queue, T* data, size_t count, size_t offset = 0, bool blocking = true);
+    
+    // Fill buffer with a value
+    void fill(const CommandQueue& queue, const T& value, bool blocking = true);
+    
+    // Copy from another buffer
+    void copyFrom(const CommandQueue& queue, const Buffer<T>& src, size_t count, size_t src_offset = 0, size_t dst_offset = 0, bool blocking = true);
+    
+    // Copy to another buffer
+    void copyTo(const CommandQueue& queue, Buffer<T>& dst, size_t count, size_t src_offset = 0, size_t dst_offset = 0, bool blocking = true);
+    
+    // Map buffer for direct access (zero-copy)
+    T* map(const CommandQueue& queue, cl_map_flags flags = CL_MAP_READ | CL_MAP_WRITE, bool blocking = true);
+    
+    // Unmap buffer
+    void unmap(const CommandQueue& queue, T* mapped_ptr);
     
     // Get underlying OpenCL buffer
     cl_mem get() const { return buffer_; }
@@ -151,12 +168,32 @@ void Buffer<T>::write(const CommandQueue& queue, const std::vector<T>& data, boo
     size_ = data.size();
     cl_int err = clEnqueueWriteBuffer(detail::getQueueHandle(queue), 
                                      buffer_, 
-                                     blocking ? CL_TRUE : CL_FALSE,
+                                     blocking ? CL_TRUE : CL_FALSE, 
                                      0, 
                                      data.size() * sizeof(T), 
                                      data.data(), 
-                                     0, nullptr, nullptr);
+                                     0, 
+                                     nullptr, 
+                                     nullptr);
     checkError(err, "writing buffer");
+}
+
+// Async write
+template<typename T>
+void Buffer<T>::writeAsync(const CommandQueue& queue, const std::vector<T>& data, cl_event& event) {
+    if (data.size() > capacity_) {
+        throw std::runtime_error("Data size exceeds buffer capacity");
+    }
+    
+    size_ = data.size();
+    cl_int err = clEnqueueWriteBuffer(detail::getQueueHandle(queue), 
+                                     buffer_, 
+                                     CL_FALSE,  // Non-blocking
+                                     0, 
+                                     data.size() * sizeof(T), 
+                                     data.data(), 
+                                     0, nullptr, &event);  // Use address directly
+    checkError(err, "writing buffer async");
 }
 
 template<typename T>
@@ -176,8 +213,7 @@ void Buffer<T>::write(const CommandQueue& queue, const std::vector<T>& data, siz
 }
 
 template<typename T>
-void Buffer<T>::write(const CommandQueue& queue, const T* data, size_t count, 
-                     size_t offset, bool blocking) {
+void Buffer<T>::write(const CommandQueue& queue, const T* data, size_t count, size_t offset, bool blocking) {
     if (offset + count > capacity_) {
         throw std::runtime_error("Write would exceed buffer capacity");
     }
@@ -204,6 +240,21 @@ void Buffer<T>::read(const CommandQueue& queue, std::vector<T>& data, bool block
                                     data.data(), 
                                     0, nullptr, nullptr);
     checkError(err, "reading buffer");
+}
+
+// Async read
+template<typename T>
+void Buffer<T>::readAsync(const CommandQueue& queue, std::vector<T>& data, cl_event& event) {
+    data.resize(size_);
+    
+    cl_int err = clEnqueueReadBuffer(detail::getQueueHandle(queue), 
+                                    buffer_, 
+                                    CL_FALSE,  // Non-blocking
+                                    0, 
+                                    size_ * sizeof(T), 
+                                    data.data(), 
+                                    0, nullptr, &event);  // Use address directly
+    checkError(err, "reading buffer async");
 }
 
 template<typename T>
@@ -238,6 +289,66 @@ void Buffer<T>::read(const CommandQueue& queue, T* data, size_t count, size_t of
                                     data, 
                                     0, nullptr, nullptr);
     checkError(err, "reading buffer to pointer");
+}
+
+template<typename T>
+void Buffer<T>::fill(const CommandQueue& queue, const T& value, bool blocking) {
+    // Create a temp vector and write it (more portable than clEnqueueFillBuffer)
+    std::vector<T> temp(size_, value);
+    write(queue, temp, blocking);
+}
+
+template<typename T>
+void Buffer<T>::copyFrom(const CommandQueue& queue, const Buffer<T>& src, size_t count, size_t src_offset, size_t dst_offset, bool blocking) {
+    if (src_offset + count > src.size()) {
+        throw std::runtime_error("Copy would exceed source buffer size");
+    }
+    if (dst_offset + count > capacity_) {
+        throw std::runtime_error("Copy would exceed destination buffer capacity");
+    }
+    
+    cl_int err = clEnqueueCopyBuffer(detail::getQueueHandle(queue),
+                                    src.get(),
+                                    buffer_,
+                                    src_offset * sizeof(T),
+                                    dst_offset * sizeof(T),
+                                    count * sizeof(T),
+                                    0, nullptr, nullptr);
+    checkError(err, "copying buffer");
+    
+    if (blocking) {
+        err = clFinish(detail::getQueueHandle(queue));
+        checkError(err, "finishing copy operation");
+    }
+}
+
+template<typename T>
+void Buffer<T>::copyTo(const CommandQueue& queue, Buffer<T>& dst, size_t count, size_t src_offset, size_t dst_offset, bool blocking) {
+    dst.copyFrom(queue, *this, count, src_offset, dst_offset, blocking);
+}
+
+template<typename T>
+T* Buffer<T>::map(const CommandQueue& queue, cl_map_flags flags, bool blocking) {
+    cl_int err;
+    void* ptr = clEnqueueMapBuffer(detail::getQueueHandle(queue),
+                                  buffer_,
+                                  blocking ? CL_TRUE : CL_FALSE,
+                                  flags,
+                                  0,
+                                  size_ * sizeof(T),
+                                  0, nullptr, nullptr,
+                                  &err);
+    checkError(err, "mapping buffer");
+    return static_cast<T*>(ptr);
+}
+
+template<typename T>
+void Buffer<T>::unmap(const CommandQueue& queue, T* mapped_ptr) {
+    cl_int err = clEnqueueUnmapMemObject(detail::getQueueHandle(queue),
+                                        buffer_,
+                                        mapped_ptr,
+                                        0, nullptr, nullptr);
+    checkError(err, "unmapping buffer");
 }
 
 } // namespace ocl

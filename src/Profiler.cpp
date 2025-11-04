@@ -1,6 +1,10 @@
 #include <ocl/Profiler.hpp>
 #include <iostream>
 #include <iomanip>
+#include <set>
+#include <algorithm>
+#include <cmath>
+#include <limits>
 
 namespace ocl {
 

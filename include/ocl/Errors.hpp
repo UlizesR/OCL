@@ -11,10 +11,13 @@ namespace ocl {
 // OpenCL Error Handling
 // ============================================================================
 
+// Convert error code to human-readable string (defined in Errors.cpp)
+const char* errorCodeToString(cl_int error);
+
 class Error : public std::runtime_error {
 public:
     Error(cl_int code, const std::string& operation)
-        : std::runtime_error("OpenCL error " + std::to_string(code) + " during: " + operation)
+        : std::runtime_error(std::string(errorCodeToString(code)) + " (" + std::to_string(code) + ") during: " + operation)
         , error_code_(code) {}
     
     cl_int code() const { return error_code_; }

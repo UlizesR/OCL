@@ -79,5 +79,17 @@ std::string Device::getInfoString(cl_device_info param) const {
     return ocl::getInfoString(id_, param);
 }
 
+bool Device::isGPU() const {
+    return (getType() & CL_DEVICE_TYPE_GPU) != 0;
+}
+
+bool Device::isCPU() const {
+    return (getType() & CL_DEVICE_TYPE_CPU) != 0;
+}
+
+bool Device::isAccelerator() const {
+    return (getType() & CL_DEVICE_TYPE_ACCELERATOR) != 0;
+}
+
 } // namespace ocl
 

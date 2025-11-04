@@ -56,9 +56,11 @@ set(OCL_SOURCES
     src/Device.cpp
     src/Context.cpp
     src/CommandQueue.cpp
+    src/Event.cpp
     src/Program.cpp
     src/Kernel.cpp
     src/Buffer.cpp
+    src/NDRange.cpp
     src/Registry.cpp
     src/Profiler.cpp
 )
@@ -70,9 +72,11 @@ set(OCL_HEADERS
     include/ocl/Device.hpp
     include/ocl/Context.hpp
     include/ocl/CommandQueue.hpp
+    include/ocl/Event.hpp
     include/ocl/Program.hpp
     include/ocl/Kernel.hpp
     include/ocl/Buffer.hpp
+    include/ocl/NDRange.hpp
     include/ocl/Registry.hpp
     include/ocl/Profiler.hpp
     include/ocl/ocl.hpp

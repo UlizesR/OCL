@@ -34,6 +34,21 @@ public:
     // Build program
     void build(const Device& device, const std::string& options = "");
     
+    // Save compiled binary to file
+    void saveBinary(const Device& device, const std::string& filepath);
+    
+    // Load program from binary file
+    static Program fromBinary(const Context& context, const Device& device, const std::string& filepath);
+    
+    // Build with optimization flags
+    void buildOptimized(const Device& device);
+    
+    // Build with debug flags
+    void buildDebug(const Device& device);
+    
+    // Get build log (useful for debugging)
+    std::string getBuildLog(const Device& device) const;
+    
     // Get underlying program
     cl_program get() const { return program_; }
     

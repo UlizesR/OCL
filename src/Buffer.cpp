@@ -14,5 +14,7 @@ cl_command_queue getQueueHandle(const CommandQueue& queue) {
 }
 
 } // namespace detail
+
+
 } // namespace ocl
 
